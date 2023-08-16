@@ -1,3 +1,7 @@
+import path from "path";
+import fs from "fs/promises";
+import gravatar from "gravatar";
+import Jimp from "jimp";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
@@ -6,6 +10,21 @@ import { HttpError } from "../helpers/index.js";
 import "dotenv/config";
 
 const { JWT_SECRET } = process.env;
+const avatarPath = path.resolve("public", "avatars");
+
+const updateAvatar = async (req, res) => {
+  const { _id } = req.user;
+  const { path: oldPath, filename } = req.file;
+  const avatar = await Jimp.read(oldPath);
+  await avatar.resize(250, 250).write(oldPath);
+  const newPath = path.join(avatarPath, filename);
+  await fs.rename(oldPath, newPath);
+  const avatarURL = path.join("avatars", filename);
+  await User.findByIdAndUpdate(_id, { avatarURL });
+  res.json({
+    avatarURL,
+  });
+};
 
 const register = async (req, res) => {
   const { email, password } = req.body;
@@ -14,7 +33,12 @@ const register = async (req, res) => {
     throw HttpError(409, "Email in use");
   }
   const hashPassword = await bcrypt.hash(password, 10);
-  const newUser = await User.create({ ...req.body, password: hashPassword });
+  const avatarURL = gravatar.url(email);
+  const newUser = await User.create({
+    ...req.body,
+    password: hashPassword,
+    avatarURL,
+  });
   res.status(201).json({
     user: {
       email: newUser.email,
@@ -63,9 +87,9 @@ const getCurrent = async (req, res) => {
 const logout = async (req, res) => {
   const { _id } = req.user;
   await User.findByIdAndUpdate(_id, { token: "" });
-    res.json({
-       message: "Logout success" 
-    });
+  res.json({
+    message: "Logout success",
+  });
 };
 
 const updateSubscription = async (req, res) => {
@@ -76,6 +100,7 @@ const updateSubscription = async (req, res) => {
 };
 
 export default {
+  updateAvatar: ctrlWrapper(updateAvatar),
   register: ctrlWrapper(register),
   login: ctrlWrapper(login),
   getCurrent: ctrlWrapper(getCurrent),

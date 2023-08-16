@@ -20,6 +20,7 @@ const userSchema = new Schema(
       enum: subscriptionList,
       default: "starter",
     },
+    avatarURL: String,
     token: String,
   },
   { versionKey: false, timestamps: true }
@@ -29,6 +30,6 @@ userSchema.pre("findOneAndUpdate", validateAtUpdate);
 userSchema.post("save", handleSaveError);
 userSchema.post("findOneAndUpdate", handleSaveError);
 
-const User = model('user', userSchema);
+const User = model("user", userSchema);
 
 export default User;
